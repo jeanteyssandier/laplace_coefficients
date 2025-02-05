@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "laplace-coefficients"
+version = "0.1.0"
+authors = [
+    { name = "Jean Teyssandier"},
+]
+description = "A package for computing Laplace coefficients used in celestial mechanics"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "scipy",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
