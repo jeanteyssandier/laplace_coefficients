@@ -3,6 +3,7 @@ from laplace.coefficients import lc, dnlc
 
 # Use Table 6.1 (page 263) of Murray & Dermott to check coefficents:
 
+
 # Test fixtures
 @pytest.fixture
 def alpha():

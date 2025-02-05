@@ -1,7 +1,7 @@
-from typing import Callable, Tuple, Union
 import numpy as np
 from scipy.integrate import quad
 from scipy.special import hyp2f1
+
 
 def _validate_inputs(alpha: float, s: float, method: str) -> None:
     """
