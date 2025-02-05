@@ -1,5 +1,5 @@
 import pytest
-from laplace.laplace import lc, dnlc
+from laplace.coefficients import lc, dnlc
 
 # Use Table 6.1 (page 263) of Murray & Dermott to check coefficents:
 
