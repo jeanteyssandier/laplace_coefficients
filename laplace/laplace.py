@@ -1,69 +1,90 @@
+from typing import Callable, Tuple, Union
 import numpy as np
-import scipy.integrate as integrate
+from scipy.integrate import quad
 from scipy.special import hyp2f1
 
-
-def lc(a, s, j, method="hyper"):
+def _validate_inputs(alpha: float, s: float, method: str) -> None:
     """
-    Laplace coefficent b_s^j(a).
+    Validate input parameters for Laplace coefficient calculations.
 
     Args:
-        a = alpha, semi-major axis ratio, between 0 and 1.
-        s = half-integer power to which the denominator is raised.
-        j = appears in argument \cos(j\theta).
-        method: - "hyper" uses the hyperbolique function 2F1, see exercice 6.2 of Murray & Dermott.
-                - "brute" uses a slower brute-force integration, see eq. (6.67) of Murray & Dermott.
+        alpha: Semi-major axis ratio (must be between 0 and 1)
+        s: Power to which the denominator is raised (must be positive)
+        method: Calculation method ('hyper' or 'brute')
+
+    Raises:
+        ValueError: If any input parameters are invalid
+    """
+    if method not in ["hyper", "brute"]:
+        raise ValueError("method must be 'hyper' or 'brute'")
+    if alpha > 1:
+        raise ValueError("semi-major axis ratio alpha must be between 0 and 1")
+    if s < 0:
+        raise ValueError("s must be a positive half-integer")
+
+
+def lc(alpha: float, s: float, j: int, method: str = "hyper") -> float:
+    """
+    Calculate the Laplace coefficient b_s^j(alpha).
+
+    Args:
+        alpha: Semi-major axis ratio (must be between 0 and 1)
+        s: Half-integer power to which the denominator is raised
+        j: Integer appearing in the argument cos(j*theta)
+        method: Calculation method, either:
+            - "hyper": Uses hypergeometric function 2F1 (faster, more accurate)
+            - "brute": Uses direct numerical integration
 
     Returns:
-        The Laplace coefficent b_s^j(a).
+        float: The Laplace coefficient b_s^j(alpha)
 
-    Note:
-        The hyper method is more accurate and faster than the brute method
-
-    Reference:
-        Murray & Dermott, Solar System Dynamics, 1999.
+    Examples:
+        >>> lc(0.5, 0.5, 1)  # Calculate b_{1/2}^1(0.5)
+        0.555866197926681
     """
-
-    if method not in ["hyper", "brute"]:
-        raise ValueError("method must be 'hyper' or 'brute'.")
-    if a > 1:
-        raise ValueError("semi-major axis ratio a must be between 0 and 1.")
-    if s < 0:
-        raise ValueError("s must be a positive half-integer.")
+    _validate_inputs(alpha, s, method)
 
     if method == "hyper":
-        j = np.abs(j)
-        p = np.prod(np.arange(1, j + 1))  # Factorial j
+        j = abs(j)  # Ensure j is non-negative for hypergeometric calculation
+        p = np.prod(np.arange(1, j + 1))  # Factorial of j
         q = np.prod(np.arange(s, s + j))
-        return 2 * (q / p) * np.power(a, j) * hyp2f1(s, s + j, j + 1, a * a)
+        return 2 * (q / p) * np.power(alpha, j) * hyp2f1(s, s + j, j + 1, alpha * alpha)
 
-    if method == "brute":
-        db = lambda t: np.cos(j * t) * np.power(1 - 2 * a * np.cos(t) + a * a, -s)
-        l, err = integrate.quad(db, 0.0, 2.0 * np.pi)
-        return l / np.pi
+    # Brute force integration method
+    integrand = lambda t: np.cos(j * t) * np.power(
+        1 - 2 * alpha * np.cos(t) + alpha * alpha, -s
+    )
+    result, _ = quad(integrand, 0.0, 2.0 * np.pi)
+    return result / np.pi
 
 
-def dnlc(a, s, j, n=0, method="hyper"):
+def dnlc(alpha: float, s: float, j: int, n: int = 0, method: str = "hyper") -> float:
     """
-    N-th derivative of Laplace coefficent D^n b_s^j(a).
+    Calculate the nth derivative of the Laplace coefficient D^n b_s^j(alpha).
 
     Args:
-        a = alpha, semi-major axis ratio, between 0 and 1.
-        s = half-integer power to which the denominator is raised.
-        j = appears in argument \cos(j\theta).
-        n = integer, order of the derivative. n=0 returns the Laplace coeffiicient. n<0 returns 0.
-        method: - "hyper" uses the hyperbolique function 2F1, see exercice 6.2 of Murray & Dermott.
-                - "brute" uses a slower brute-force integration, see eq. (6.67) of Murray & Dermott.
+        alpha: Semi-major axis ratio (must be between 0 and 1)
+        s: Half-integer power to which the denominator is raised
+        j: Integer appearing in the argument cos(j*theta)
+        n: Order of the derivative (n=0 returns the Laplace coefficient)
+        method: Calculation method ('hyper' or 'brute')
 
     Returns:
-        The n-th derivative of the Laplace coefficent b_s^j(a).
+        float: The nth derivative of the Laplace coefficient
+
+    Notes:
+        - For n <= 0, returns max(0, n+1) * lc(alpha, s, j, method)
+        - Uses a recursive formula for n > 0
     """
+    _validate_inputs(alpha, s, method)
+
     if n <= 0:
-        return max(0, n + 1) * lc(a, s, j, method)
-    else:
-        return s * (
-            dnlc(a, s + 1, j - 1, n - 1, method)
-            - 2 * a * dnlc(a, s + 1, j, n - 1, method)
-            + dnlc(a, s + 1, j + 1, n - 1, method)
-            - 2 * (n - 1) * dnlc(a, s + 1, j, n - 2, method)
-        )
+        return max(0, n + 1) * lc(alpha, s, j, method)
+
+    # Recursive calculation for higher derivatives
+    return s * (
+        dnlc(alpha, s + 1, j - 1, n - 1, method)
+        - 2 * alpha * dnlc(alpha, s + 1, j, n - 1, method)
+        + dnlc(alpha, s + 1, j + 1, n - 1, method)
+        - 2 * (n - 1) * dnlc(alpha, s + 1, j, n - 2, method)
+    )
